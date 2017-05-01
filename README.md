@@ -7,4 +7,4 @@ Supports CC0pi, CC1pi0, CC1pi+ signal definitions.
 
 Very hacked for now; should really move to a class system later.
 
-For similar stuff (but much more extensive see hepforge.nuisance.org).
+For similar stuff (but much more extensive see [NUISANCE](https://hepforge.nuisance.org).
