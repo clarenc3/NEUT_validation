@@ -24,9 +24,9 @@
 #include "neutvtx.h"
 #include "neutrootTreeSingleton.h"
 
-void getKin(std::string fileName, int fitType, double maxMom);
+void getKin(std::string fileName, int fitType, double maxMom, std::string inputfile);
 
-void Usage(void);
+void Usage(int argc, char *argv[]);
 
 // And enum to keep track of signal definiton
 enum SignalDefinition {

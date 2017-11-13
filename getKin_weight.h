@@ -24,7 +24,8 @@
 #include "neutvtx.h"
 #include "neutrootTreeSingleton.h"
 
-void getKin(std::string fileName, int fitType, double maxMom);
+// Additionally need a TFile to take the weights from
+void getKin_weight(std::string fileName, int fitType, double maxMom, std::string WeightFile, std::string HistoName);
 
 void Usage(void);
 

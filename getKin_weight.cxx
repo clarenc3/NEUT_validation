@@ -1,14 +1,14 @@
-#include "getKin.h"
+#include "getKin_weight.h"
 
 // The main
 int main(int argc, char* argv[]) {
 
-  if (argc != 4) {
+  if (argc != 6) {
     Usage();
     exit(-1);
   }
 
-  getKin(std::string(argv[1]), std::atoi(argv[2]), std::atof(argv[3]));
+  getKin_weight(std::string(argv[1]), std::atoi(argv[2]), std::atof(argv[3]), std::string(argv[4]), std::string(argv[5]));
 
   return 0;
 };
@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 void Usage() {
 
   std::cout << "Wrong number of arguments!" << std::endl;
-  std::cout << "./getKin.exe ROOT_FILE SIGNAL MAX_MOM" << std::endl;
+  std::cout << "./getKin.exe ROOT_FILE SIGNAL MAX_MOM CORRECTED_FILE CORRECTED_HIST" << std::endl;
   std::cout << "ROOT_FILE is the NEUT output vector file" << std::endl;
   std::cout << "SIGNAL is 0 = CC0pi, 1 = CC1pi, 2 = CC1pi0" << std::endl;
   std::cout << "MAX_MOM is the rough momentum scale of the neutrinos" << std::endl;
@@ -26,8 +26,7 @@ void Usage() {
 }
 
 // The main loop
-void getKin(std::string fileName, int sigType, double maxMom) {
-
+void getKin_weight(std::string fileName, int sigType, double maxMom, std::string WeightFileName, std::string HistoName) {
 
   if (sigType == kCC0pi)        std::cout << "Signal is CC0pi" << std::endl;
   else if (sigType == kCC1pip)  std::cout << "Signal is CC1pi+" << std::endl;
@@ -37,6 +36,13 @@ void getKin(std::string fileName, int sigType, double maxMom) {
     Usage();
     exit(-1);
   }
+
+  // First get the weights histogram
+  TFile *WeightFile = new TFile(WeightFileName.c_str(), "OPEN");
+  TH3D* WeightSpectrum = (TH3D*)(WeightFile->Get(HistoName.c_str()));
+  WeightSpectrum->SetDirectory(0);
+  WeightSpectrum->SetNameTitle("WeightSpectrum", "WeightSpectrum");
+  WeightFile->Close();
 
   TFile *f = TFile::Open((fileName).c_str(),"open");
   TTree *tn = (TTree*)(f->Get("neuttree"));
@@ -115,16 +121,6 @@ void getKin(std::string fileName, int sigType, double maxMom) {
   hWQ2->GetXaxis()->SetTitle("W (GeV/c^{2})");
   hWQ2->GetYaxis()->SetTitle("Q^{2} (GeV^{2}");
   hWQ2->GetZaxis()->SetTitle("d^{2}#sigma/dWdQ^{2} (cm^{2}/nucleon/(GeV/c^{2})/GeV^{2})");
-
-  TH3D *hWQ2Enu = new TH3D("hWQ2Enu", "hWQ2Enu", nBins, 1.1, 2.0, nBins, 0, 1.5, nBins, 0.4, 5.0);
-  hWQ2Enu->GetXaxis()->SetTitle("W (GeV/c^{2})");
-  hWQ2Enu->GetYaxis()->SetTitle("Q^{2} (GeV^{2}");
-  hWQ2Enu->GetZaxis()->SetTitle("E_{#nu}^{true} (GeV)");
-
-  TH3D *hWQ2Pmu = new TH3D("hWQ2Pmu", "hWQ2Pmu", nBins, 1.1, 2.0, nBins, 0, 1.5, nBins, 0.2, 6.0);
-  hWQ2Pmu->GetXaxis()->SetTitle("W (GeV/c^{2})");
-  hWQ2Pmu->GetYaxis()->SetTitle("Q^{2} (GeV^{2}");
-  hWQ2Pmu->GetZaxis()->SetTitle("p_{#mu}^{true} (GeV)");
 
   TH1D *hEnu = new TH1D("hEnu","hEnu",nBins, 0.4, 2.0);
   hEnu->GetXaxis()->SetTitle("E_{#nu} (GeV)");
@@ -228,10 +224,9 @@ void getKin(std::string fileName, int sigType, double maxMom) {
     if (sigType == kCC0pi) {
       if (!isT2K_CC0pi(nvect, 0, maxMom*3, isRestricted)) continue;
       eventCnt++;
-    // Only plot the pion modes
     } else if (sigType == kCC1pip) {
-      //if (nvect->Mode != 11 && nvect->Mode != 12 && nvect->Mode != 13) continue;
-      if (!isT2K_CC1pip(nvect, 0, maxMom*3, isRestricted)) continue;
+      // Only plot the pion modes
+      if (nvect->Mode != 11 && nvect->Mode != 12 && nvect->Mode != 13) continue;
       eventCnt++;
     } else if (sigType == kCC1pi0) {
       if (!isT2K_CC1pi0(nvect, 0, maxMom*3, isRestricted)) continue;
@@ -327,6 +322,7 @@ void getKin(std::string fileName, int sigType, double maxMom) {
     double costhAdler;
     double phiAdler;
 
+    double weight = 1.;
     // If we have a pion
     if (sigType == kCC1pi0 || sigType == kCC1pip) {
 
@@ -342,71 +338,66 @@ void getKin(std::string fileName, int sigType, double maxMom) {
 
       W_rec = Wrec(Pnu, Pmu)/1000.;
       W = Wtrue(Pnu, Pmu, PInitialState)/1000.;
+
+      weight = WeightSpectrum->GetBinContent(WeightSpectrum->FindBin(W, Q2, Enu));
     }
 
+    // Now that we know it is signal and have the relevant kinematics, find the weight for this event
+    //std::cout << weight << std::endl;
+
+
     if (pmu > 0) {
-      hPmu->Fill(pmu);
-      hThmu->Fill(thmu);
-      hPthetaMu->Fill(pmu, thmu);
+      hPmu->Fill(pmu, weight);
+      hThmu->Fill(thmu, weight);
+      hPthetaMu->Fill(pmu, thmu, weight);
 
-      hPmuQ2->Fill(pmu, Q2);
-      hThetaQ2->Fill(thmu, Q2);
+      hPmuQ2->Fill(pmu, Q2, weight);
+      hThetaQ2->Fill(thmu, Q2, weight);
 
-      hEnu->Fill(Enu);
-      hQ2->Fill(Q2);
-      hQ2_mode[nvect->Mode]->Fill(Q2);
+      hEnu->Fill(Enu, weight);
+      hQ2->Fill(Q2, weight);
+      hQ2_mode[nvect->Mode]->Fill(Q2, weight);
     }
 
     if (pprot > 0) {
-      hPprot->Fill(pprot);
-      hThprot->Fill(thprot);
-      hPthetaProt->Fill(pprot, thprot);
+      hPprot->Fill(pprot, weight);
+      hThprot->Fill(thprot, weight);
+      hPthetaProt->Fill(pprot, thprot, weight);
     }
 
     if (pneut > 0) {
-      hPneut->Fill(pneut);
-      hThneut->Fill(thneut);
-      hPthetaNeut->Fill(pneut, thneut);
-
-      /*
-      if (pneut < 0.120) {
-        std::cout << "neutron: " << pneut << " GeV" << std::endl;
-        std::cout << "Enu:     " << Enu << " GeV" << std::endl;
-        std::cout << "W:       " << W << " GeV" << std::endl;
-        std::cout << "Q2:      " << Q2 << " GeV2" << std::endl;
-      }
-      */
+      hPneut->Fill(pneut, weight);
+      hThneut->Fill(thneut, weight);
+      hPthetaNeut->Fill(pneut, thneut, weight);
     }
 
     if (sigType == kCC1pip || sigType == kCC1pi0) {
 
       if (ppi > 0) {
 
-        hPpi->Fill(ppi);
-        hPpi_mode[nvect->Mode]->Fill(ppi);
-        hThpi->Fill(thpi);
+        hPpi->Fill(ppi,weight);
+        hPpi_mode[nvect->Mode]->Fill(ppi,weight);
+        hThpi->Fill(thpi,weight);
 
-        hPthetaPi->Fill(ppi, thpi);
+        hPthetaPi->Fill(ppi, thpi, weight);
         if (pprot > 0) {
-          hThprotpi->Fill(thprotpi);
-          hThmupi->Fill(thmupi);
+          hThprotpi->Fill(thprotpi,weight);
+          hThmupi->Fill(thmupi,weight);
 
-          hCosThPiRest->Fill(costhAdler);
+          hCosThPiRest->Fill(costhAdler,weight);
         }
       }
 
       if (pmu > 0) {
-        hW->Fill(W);
-        hWQ2->Fill(W, Q2);
-        hWQ2Enu->Fill(W,Q2,Enu);
-        hWQ2Pmu->Fill(W,Q2,pmu);
-        hW_rec->Fill(W_rec);
+        hW->Fill(W,weight);
+        hWQ2->Fill(W, Q2,weight);
+        hW_rec->Fill(W_rec,weight);
       }
     }
 
     // Always fill these
-    hNp->Fill(np);
-    hNn->Fill(nn);
+    hNp->Fill(np,weight);
+    hNn->Fill(nn,weight);
 
   }
 
@@ -482,12 +473,6 @@ void getKin(std::string fileName, int sigType, double maxMom) {
     hWQ2->Sumw2();
     hWQ2->Scale(ScaleFactor, "width");
 
-    hWQ2Enu->Sumw2();
-    hWQ2Enu->Scale(ScaleFactor, "width");
-
-    hWQ2Pmu->Sumw2();
-    hWQ2Pmu->Scale(ScaleFactor, "width");
-
     hW->Sumw2();
     hW->Scale(ScaleFactor, "width");
 
@@ -509,7 +494,7 @@ void getKin(std::string fileName, int sigType, double maxMom) {
   // Make filename for not restricted
   if (!isRestricted) fileName += "_noKinCuts";
 
-  fileName+="_cc1pi_outgoing.root";
+  fileName+="_outgoing_cc1pi_corr"+HistoName+".root";
 
   TFile *output = new TFile(fileName.c_str(), "recreate");
 
@@ -571,8 +556,6 @@ void getKin(std::string fileName, int sigType, double maxMom) {
     hW->Write();
     hW_rec->Write();
     hWQ2->Write();
-    hWQ2Enu->Write();
-    hWQ2Pmu->Write();
   }
 
   hNp->Write();

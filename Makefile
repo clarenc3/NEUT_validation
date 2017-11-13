@@ -18,7 +18,7 @@ ROOT_CXX_FLAGS = $(shell root-config --cflags)
 ROOT_LIBRARIES = $(shell root-config --glibs --libs)
 
 CXX = g++
-CXXFLAGS = -Wall -fPIC $(ROOT_FLAGS) -g
+CXXFLAGS = -Wall -fPIC $(ROOT_FLAGS) -g -O3
 LDFLAGS = -g
 SOFLAGS = -shared -Xlinker -zmuldefs
 
@@ -27,18 +27,23 @@ INCLUDES := $(ROOT_INCLUDES) $(NEUT_INCLUDES)
 
 
 
-all: 	getKin getKin_nuc checkNEUT
+all: 	getKin getKin_weight getKin_mode getKin_mode_validation
+
 
 getKin: getKin.cxx
 	$(CXX) $(CXXFLAGS) -o $@ $< -I$(NEUT_INCLUDES) -I$(ROOT_INCLUDES) $(LIBRARIES)
 
-getKin_nuc: getKin_nuc.cxx
+getKin_weight: getKin_weight.cxx
 	$(CXX) $(CXXFLAGS) -o $@ $< -I$(NEUT_INCLUDES) -I$(ROOT_INCLUDES) $(LIBRARIES)
 
-checkNEUT: checkNEUT.cxx
+getKin_mode: getKin_mode.cxx
+	$(CXX) $(CXXFLAGS) -o $@ $< -I$(NEUT_INCLUDES) -I$(ROOT_INCLUDES) $(LIBRARIES)
+
+getKin_mode_validation: getKin_mode_validation.cxx
 	$(CXX) $(CXXFLAGS) -o $@ $< -I$(NEUT_INCLUDES) -I$(ROOT_INCLUDES) $(LIBRARIES)
 
 clean:
 	rm -fv getKin
-	rm -fv getKin_nuc
-	rm -fv checkNEUT
+	rm -fv getKin_weight
+	rm -fv getKin_mode
+	rm -fv getKin_mode_validation
