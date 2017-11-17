@@ -276,8 +276,12 @@ void getKin(std::string fileName, int sigType, double maxMom, std::string inputF
     }
 
     // Find the weight to apply to the nominal histogram
-    PmuCosmu[abs(nvect->Mode)]->Fill(plep, costhlep, 1./weight_2d);
-    PmuCosmuEnu[abs(nvect->Mode)]->Fill(plep, costhlep, enu, 1./weight_3d);
+    if (weight_2d != 0) {
+      PmuCosmu[abs(nvect->Mode)]->Fill(plep, costhlep, 1./weight_2d);
+    }
+    if (weight_3d != 0) {
+      PmuCosmuEnu[abs(nvect->Mode)]->Fill(plep, costhlep, enu, 1./weight_3d);
+    }
   }
 
   std::cout << eventCnt << "/" << nevents << " events" << std::endl;
@@ -295,7 +299,6 @@ void getKin(std::string fileName, int sigType, double maxMom, std::string inputF
     if (PmuCosmu[i] == NULL) continue;
 
     if (PmuCosmu[i]->Integral() > 0) {
-      PmuCosmu[i]->Sumw2();
       PmuCosmu[i]->Scale(ScaleFactor, "width");
       std::cout << "PmuCosmu integral: " << PmuCosmu[i]->Integral() << std::endl;
       PmuCosmu[i]->Write();
@@ -306,7 +309,6 @@ void getKin(std::string fileName, int sigType, double maxMom, std::string inputF
     }
 
     if (PmuCosmuEnu[i]->Integral() > 0) {
-      PmuCosmu[i]->Sumw2();
       PmuCosmuEnu[i]->Scale(ScaleFactor, "width");
       std::cout << "PmuCosmuEnu integral: " << PmuCosmuEnu[i]->Integral() << std::endl;
       PmuCosmuEnu[i]->Write();
